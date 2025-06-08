@@ -58,3 +58,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/generer-texte', [IAController::class, 'genererTexte']);
 
 });
+Route::post('/generer-texte', [IAController::class, 'genererTexte']);

@@ -9,17 +9,23 @@ class IAController extends Controller
 {
     public function genererTexte(Request $request)
     {
-        // Validation du prompt
-        $request->validate([
-            'prompt' => 'required|string|max:1000'
+        // Validation des champs reçus
+        $data = $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string',
         ]);
 
+        // Construction de la prompt
+        $prompt = "Titre : {$data['title']}\n";
+        $prompt .= "Contenu : {$data['content']}\n";
+        $prompt .= "Merci de générer un document structuré qui reprend ces informations de façon claire et professionnelle.";
+
         try {
-            // Appel vers le microservice Flask (nouvelle URL et format)
+            // Appel vers le microservice Flask
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
             ])->post('http://localhost:5000/generate', [
-                'prompt' => $request->input('prompt'),
+                'prompt' => $prompt,
             ]);
 
             $json = $response->json();
