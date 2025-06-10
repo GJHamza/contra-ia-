@@ -10,7 +10,7 @@ return new class extends Migration {
         Schema::create('documents', function (Blueprint $table) {
             $table->id();
             $table->string('title');
-            $table->longText('content');
+            $table->json('content');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->enum('status', ['en_attente', 'en_cours', 'termine'])->default('en_attente');
             $table->timestamp('generated_at')->nullable();

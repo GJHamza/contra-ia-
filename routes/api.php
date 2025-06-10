@@ -13,6 +13,7 @@ use App\Http\Controllers\GptHistoryController;
 use App\Http\Controllers\PDFController;
 use App\Http\Controllers\HuggingFaceController;
 use App\Http\Controllers\IAController;
+use App\Http\Controllers\AdminController;
 
 /*
 |--------------------------------------------------------------------------
@@ -58,4 +59,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/generer-texte', [IAController::class, 'genererTexte']);
 
 });
-Route::post('/generer-texte', [IAController::class, 'genererTexte']);
+
+// Routes admin protégées par le middleware is_admin
+Route::middleware(['auth:sanctum', 'is_admin'])->prefix('admin')->group(function () {
+    Route::get('/dashboard', [AdminController::class, 'dashboard']);
+    Route::get('/users', [AdminController::class, 'users']);
+    Route::post('/users', [AdminController::class, 'storeUser']);
+    Route::put('/users/{id}', [AdminController::class, 'updateUser']);
+    Route::delete('/users/{id}', [AdminController::class, 'deleteUser']);
+    Route::get('/documents', [AdminController::class, 'documents']);
+    Route::get('/documents/{id}', [AdminController::class, 'showDocument']);
+    Route::delete('/documents/{id}', [AdminController::class, 'deleteDocument']);
+});

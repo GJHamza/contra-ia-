@@ -18,6 +18,9 @@ class DocumentController extends Controller
             'content' => 'required|string',
         ]);
 
+        // Lier le document à l'utilisateur connecté
+        $validated['user_id'] = $request->user()->id;
+
         $document = Document::create($validated);
 
         return response()->json([

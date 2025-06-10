@@ -11,29 +11,56 @@ class IAController extends Controller
     {
         // Validation des champs reçus
         $data = $request->validate([
-            'title' => 'required|string|max:255',
-            'content' => 'required|string',
+            'document' => 'required|array',
+            'document.title' => 'required|string|max:255',
+            'document.content' => 'required', // accepte tout type
         ]);
 
+        // Si content est une chaîne JSON, on la décode en tableau associatif
+        if (is_string($data['document']['content'])) {
+            $decoded = json_decode($data['document']['content'], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $data['document']['content'] = $decoded;
+            }
+        }
+
         // Construction de la prompt
-        $prompt = "Titre : {$data['title']}\n";
-        $prompt .= "Contenu : {$data['content']}\n";
-        $prompt .= "Merci de générer un document structuré qui reprend ces informations de façon claire et professionnelle.";
+        $prompt = "Données du document :\n";
+        if (is_array($data['document']['content'])) {
+            foreach ($data['document']['content'] as $key => $value) {
+                $prompt .= "$key : $value\n";
+            }
+        } else {
+            $prompt .= $data['document']['content'] . "\n";
+        }
+        $prompt .= "\nMerci de générer un document structuré qui reprend ces informations de façon claire et professionnelle.";
+
+        // Log de la prompt pour debug
+        \Log::info('Prompt envoyée à Python : ' . $prompt);
 
         try {
             // Appel vers le microservice Flask
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
-            ])->post('http://localhost:5000/generate', [
+            ])->post('http://127.0.0.1:5000/generate', [
                 'prompt' => $prompt,
             ]);
 
             $json = $response->json();
             if ($response->successful() && isset($json['generated_text'])) {
-                return response()->json([
-                    'success' => true,
-                    'generated_text' => $json['generated_text'],
-                ], 200);
+                $generatedText = $json['generated_text'];
+
+                // Générer le PDF avec DomPDF
+                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.document', [
+                    'document' => (object)[
+                        'title' => $data['document']['title'],
+                        'type' => '', // tu peux adapter si besoin
+                        'content' => $generatedText,
+                    ]
+                ]);
+
+                // Retourner le PDF pour affichage dans React
+                return $pdf->stream('document_genere.pdf');
             } elseif ($response->successful()) {
                 return response()->json([
                     'success' => false,
