@@ -15,13 +15,44 @@ class DocumentController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'content' => 'required|string',
+            'instruction' => 'nullable|string',
+            // autres champs si besoin
         ]);
 
-        // Lier le document à l'utilisateur connecté
-        $validated['user_id'] = $request->user()->id;
+        // Génération du texte via microservice IA
+        $prompt = "Titre : " . $validated['title'] . "\n";
+        if (!empty($validated['instruction'])) {
+            $prompt .= "Instruction : " . $validated['instruction'] . "\n";
+        }
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post('http://localhost:5000/generate', [
+                'prompt' => $prompt,
+            ]);
+            $json = $response->json();
+            if ($response->successful() && isset($json['generated_text'])) {
+                $validated['content'] = $json['generated_text'];
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la génération du texte.',
+                    'details' => $json,
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le microservice IA est indisponible.',
+                'error' => $e->getMessage(),
+            ], 503);
+        }
 
-        $document = Document::create($validated);
+        // Lier le document à l'utilisateur connecté si besoin
+        if ($request->user()) {
+            $validated['user_id'] = $request->user()->id;
+        }
+        $document = \App\Models\Document::create($validated);
 
         return response()->json([
             'message' => 'Document créé avec succès.',

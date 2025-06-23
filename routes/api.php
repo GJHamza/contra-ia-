@@ -24,8 +24,6 @@ use App\Http\Controllers\AdminController;
 // ✅ Authentification (accès public)
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/generer-texte', [IAController::class, 'genererTexte']);
-Route::post('/generer-template', [IAController::class, 'genererTemplate']);
 
 // 🔐 Routes protégées (requièrent un token Sanctum)
 Route::middleware('auth:sanctum')->group(function () {

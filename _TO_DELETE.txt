@@ -1,0 +1,1 @@
+Suppression IAController.php et IAControllerTest.php suite à la centralisation de la logique IA dans DocumentController.
