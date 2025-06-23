@@ -73,4 +73,27 @@ class AuthController extends Controller
             'message' => 'Déconnexion réussie.',
         ]);
     }
+
+    /**
+     * Mettre à jour le profil de l'utilisateur.
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'password' => 'sometimes|string|min:8|confirmed',
+        ]);
+
+        if (isset($validated['name'])) {
+            $user->name = $validated['name'];
+        }
+        if (isset($validated['password'])) {
+            $user->password = bcrypt($validated['password']);
+        }
+        $user->save();
+
+        return response()->json(['message' => 'Profil mis à jour avec succès', 'user' => $user]);
+    }
 }

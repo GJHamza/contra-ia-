@@ -9,8 +9,11 @@
 </head>
 <body>
     <h1>{{ $document->title }}</h1>
-    <p><strong>Type :</strong> {{ $document->type }}</p>
     <p><strong>Contenu :</strong></p>
-    <div>{!! nl2br(e($document->content)) !!}</div>
+    <div>{!! nl2br(e($document->generated_text)) !!}</div>
+
+    
+    {{-- Debug temporaire --}}
+    <pre>{{ var_dump($document) }}</pre>
 </body>
 </html>

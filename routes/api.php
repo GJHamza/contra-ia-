@@ -24,6 +24,8 @@ use App\Http\Controllers\AdminController;
 // ✅ Authentification (accès public)
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/generer-texte', [IAController::class, 'genererTexte']);
+Route::post('/generer-template', [IAController::class, 'genererTemplate']);
 
 // 🔐 Routes protégées (requièrent un token Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
@@ -31,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // 👤 Utilisateur connecté
     Route::get('/user', fn(Request $request) => $request->user());
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::put('/user/update', [AuthController::class, 'updateProfile']);
 
     // 📄 Documents
     Route::apiResource('documents', DocumentController::class)->except(['create', 'edit']);
@@ -56,10 +59,9 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // 🤖 Génération via Hugging Face
     Route::post('/huggingface/generate', [GPTPDFController::class, 'generateText']);
-    Route::post('/generer-texte', [IAController::class, 'genererTexte']);
+    
 
 });
-
 // Routes admin protégées par le middleware is_admin
 Route::middleware(['auth:sanctum', 'is_admin'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard']);

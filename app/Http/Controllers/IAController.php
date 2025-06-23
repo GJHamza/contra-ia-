@@ -9,6 +9,8 @@ class IAController extends Controller
 {
     public function genererTexte(Request $request)
     {
+        // Log du body brut reçu
+        \Log::info('Body reçu par Laravel : ' . json_encode($request->all()));
         // Validation des champs reçus
         $data = $request->validate([
             'document' => 'required|array',
@@ -16,15 +18,17 @@ class IAController extends Controller
             'document.content' => 'required', // accepte tout type
         ]);
 
-        // Si content est une chaîne JSON, on la décode en tableau associatif
-        if (is_string($data['document']['content'])) {
-            $decoded = json_decode($data['document']['content'], true);
+        // Toujours essayer de décoder le content, même si déjà un tableau
+        $content = $data['document']['content'];
+        if (!is_array($content)) {
+            $decoded = json_decode($content, true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $data['document']['content'] = $decoded;
+                $content = $decoded;
             }
         }
+        $data['document']['content'] = $content;
 
-        // Construction de la prompt
+        // Construction dynamique de la prompt
         $prompt = "Données du document :\n";
         if (is_array($data['document']['content'])) {
             foreach ($data['document']['content'] as $key => $value) {
@@ -33,13 +37,15 @@ class IAController extends Controller
         } else {
             $prompt .= $data['document']['content'] . "\n";
         }
-        $prompt .= "\nMerci de générer un document structuré qui reprend ces informations de façon claire et professionnelle.";
+        // Utiliser une instruction personnalisée si fournie
+        $instruction = $data['document']['instruction'] ?? "Merci de générer un document structuré à partir de ces informations.";
+        $prompt .= "\n" . $instruction;
 
         // Log de la prompt pour debug
         \Log::info('Prompt envoyée à Python : ' . $prompt);
 
         try {
-            // Appel vers le microservice Flask
+            // Appel vers le microservice Flask (URL corrigée si besoin)
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
             ])->post('http://127.0.0.1:5000/generate', [
@@ -47,15 +53,16 @@ class IAController extends Controller
             ]);
 
             $json = $response->json();
+            \Log::info('Réponse du microservice IA : ' . json_encode($json));
             if ($response->successful() && isset($json['generated_text'])) {
                 $generatedText = $json['generated_text'];
 
                 // Générer le PDF avec DomPDF
+                
                 $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.document', [
                     'document' => (object)[
                         'title' => $data['document']['title'],
-                        'type' => '', // tu peux adapter si besoin
-                        'content' => $generatedText,
+                        'generated_text' => $generatedText,
                     ]
                 ]);
 
@@ -86,6 +93,42 @@ class IAController extends Controller
                 'message' => 'Une erreur est survenue.',
                 'error' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function genererTemplate(Request $request)
+    {
+        // On suppose que le body contient déjà tous les champs dynamiques nécessaires
+        $fields = $request->all();
+
+        // Log pour debug
+        \Log::info('Champs envoyés à /generate : ' . json_encode($fields));
+
+        try {
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post('http://127.0.0.1:5000/generate', $fields);
+
+            $json = $response->json();
+            if ($response->successful() && isset($json['generated_text'])) {
+                // Ici, tu peux retourner le texte généré ou générer un PDF comme tu veux
+                return response()->json([
+                    'success' => true,
+                    'generated_text' => $json['generated_text'],
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la génération du document.',
+                    'error' => $json['error'] ?? 'Erreur inconnue',
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le microservice IA est indisponible.',
+                'error' => $e->getMessage(),
+            ], 503);
         }
     }
 }
