@@ -25,6 +25,8 @@ use App\Http\Controllers\AdminController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+Route::get('/documents/{id}/preview', [DocumentController::class, 'preview']);
+
 // 🔐 Routes protégées (requièrent un token Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -35,6 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 📄 Documents
     Route::apiResource('documents', DocumentController::class)->except(['create', 'edit']);
+    Route::post('/documents/from-template', [DocumentController::class, 'storeFromTemplate']);
     Route::get('/documents/{id}/download', [DocumentController::class, 'download']);
     Route::get('/documents/{id}/pdf', [PDFController::class, 'generate']);
 
@@ -61,7 +64,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
 });
 // Routes admin protégées par le middleware is_admin
-Route::middleware(['auth:sanctum', 'is_admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    // Routes réservées à l’admin
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
     Route::get('/users', [AdminController::class, 'users']);
     Route::post('/users', [AdminController::class, 'storeUser']);

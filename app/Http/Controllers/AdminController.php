@@ -31,7 +31,7 @@ class AdminController extends Controller
             'name' => 'required|string',
             'email' => 'required|email|unique:users',
             'password' => 'required|string|min:6',
-            'is_admin' => 'boolean',
+            'role' => 'in:user,admin',
         ]);
         $data['password'] = bcrypt($data['password']);
         $user = User::create($data);
@@ -46,7 +46,7 @@ class AdminController extends Controller
             'name' => 'sometimes|string',
             'email' => 'sometimes|email|unique:users,email,'.$id,
             'password' => 'sometimes|string|min:6',
-            'is_admin' => 'boolean',
+            'role' => 'in:user,admin',
         ]);
         if (isset($data['password'])) {
             $data['password'] = bcrypt($data['password']);
