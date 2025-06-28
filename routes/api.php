@@ -14,6 +14,7 @@ use App\Http\Controllers\PDFController;
 use App\Http\Controllers\HuggingFaceController;
 use App\Http\Controllers\IAController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\OpenAIUsageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -61,9 +62,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // 🤖 Génération via Hugging Face
     Route::post('/huggingface/generate', [GPTPDFController::class, 'generateText']);
     
-
 });
-// Routes admin protégées par le middleware is_admin
+
+// Routes admin protégées par le middleware admin (et auth:sanctum)
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
     // Routes réservées à l’admin
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
@@ -74,4 +75,6 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/documents', [AdminController::class, 'documents']);
     Route::get('/documents/{id}', [AdminController::class, 'showDocument']);
     Route::delete('/documents/{id}', [AdminController::class, 'deleteDocument']);
+    // Statistiques OpenAI admin (optionnel, accès via /admin/openai/usage)
+    Route::get('/openai/usage', [OpenAIUsageController::class, 'getUsage']);
 });
