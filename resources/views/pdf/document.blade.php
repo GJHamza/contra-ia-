@@ -26,6 +26,10 @@
     @php
         $content = json_decode($document->content, true);
         $html = $content['html'] ?? '';
+        if (is_array($html)) {
+            // Si c'est un tableau, on prend le premier élément ou on le concatène
+            $html = implode('', $html);
+        }
         $lieu_signature = $content['fields']['lieu'] ?? null;
         $date_signature = $content['fields']['date'] ?? null;
         $signataires = $content['fields']['signataires'] ?? null;
