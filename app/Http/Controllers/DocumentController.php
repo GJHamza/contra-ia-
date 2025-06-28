@@ -49,6 +49,16 @@ class DocumentController extends Controller
             $json = $response->json();
             if ($response->successful() && isset($json['generated_text'])) {
                 $generatedText = $json['generated_text'];
+                // Extraction des tokens et du coût si présents dans la réponse du microservice
+                $tokens = $json['usage']['total_tokens'] ?? null;
+                $cost = $json['usage']['cost'] ?? null;
+                if ($tokens !== null && $cost !== null) {
+                    \App\Models\OpenAIUsage::create([
+                        'date' => now()->toDateString(),
+                        'tokens' => $tokens,
+                        'cost' => $cost,
+                    ]);
+                }
             } else {
                 return response()->json([
                     'success' => false,
@@ -63,6 +73,19 @@ class DocumentController extends Controller
                 'error' => $e->getMessage(),
             ], 503);
         }
+
+        // Enregistrement automatique de l'usage OpenAI lors de la génération de document
+        // À placer après chaque génération IA réussie (exemple pour DocumentController)
+        //
+        // Exemple d'utilisation :
+        // OpenAIUsage::create([
+        //     'date' => now()->toDateString(),
+        //     'tokens' => $tokens, // nombre de tokens utilisés pour cette génération
+        //     'cost' => $cost,     // coût estimé pour cette génération
+        // ]);
+        //
+        // Il faut extraire $tokens et $cost de la réponse du microservice ou de l'API OpenAI
+        // et les passer ici pour chaque génération IA.
 
         // Stocker le texte généré dans le champ content (JSON)
         $validated['content'] = json_encode([
