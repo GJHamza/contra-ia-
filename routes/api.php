@@ -37,7 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 📄 Documents
     Route::apiResource('documents', DocumentController::class)->except(['create', 'edit']);
-    Route::post('/documents/from-template', [DocumentController::class, 'storeFromTemplate']);
+    // Route::post('/documents/from-template', [DocumentController::class, 'storeFromTemplate']);
     Route::get('/documents/{id}/download', [DocumentController::class, 'download']);
     Route::get('/documents/{id}/pdf', [PDFController::class, 'generate']);
 

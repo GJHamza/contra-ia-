@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Document;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use League\CommonMark\CommonMarkConverter;
+use Illuminate\Support\Facades\Http;
 
 class DocumentController extends Controller
 {
@@ -28,27 +30,38 @@ class DocumentController extends Controller
         foreach ($contentArray as $key => $value) {
             $prompt .= "$key : $value\n";
         }
-        $prompt .= "\nMerci de générer un contrat de prestation de service complet, structuré et professionnel, en français, avec les consignes suivantes :\n";
-        $prompt .= "- Chaque section doit être dans un paragraphe séparé, avec des titres clairs pour chaque partie.\n";
-        $prompt .= "- Utilise des balises HTML <p> pour chaque paragraphe et <h2> pour chaque section.\n";
-        $prompt .= "- À la fin du document, ajoute une section 'Signatures' avec :<br>\n";
-        $prompt .= "  - 'Date et lieu' aligné à droite, suivi d'un champ vide à remplir (exemple : _________)<br>\n";
-        $prompt .= "  - 'Le prestataire' aligné à droite, suivi d'un champ vide à remplir (exemple : _________)<br>\n";
-        $prompt .= "  - 'Le client' aligné à droite, suivi d'un champ vide à remplir (exemple : _________)<br>\n";
-        $prompt .= "- Les champs de signature doivent être vides pour permettre la signature manuscrite.\n";
-        $prompt .= "- Le contrat doit être rédigé dans un style juridique, clair et précis, comme un vrai contrat utilisé par des professionnels.\n";
+        $prompt .= "\nMerci de générer un document complet, professionnel et structuré, en français, en utilisant la syntaxe Markdown, selon les instructions suivantes :\n";
+        $prompt .= "- Commence par un titre principal centré, en majuscules, correspondant au type de contrat (exemple : \"CONTRAT DE TRAVAIL\").\n";
+        $prompt .= "- Ajoute immédiatement sous le titre principal un paragraphe d’introduction qui présente le contexte, l’objet du document, les parties concernées et le but du document, avant de commencer les articles.\n";
+        $prompt .= "- Ajoute une clause de définitions après l’introduction, pour clarifier les termes importants utilisés dans le document.\n";
+        $prompt .= "- Structure le contrat en articles numérotés, chaque article commençant sur une nouvelle ligne, avec un titre de niveau 2 (##) en Markdown, en gras et souligné (exemple : \"## _Article 1 : Parties concernées_\").\n";
+        $prompt .= "- Inclue systématiquement des clauses de confidentialité, force majeure, protection des données personnelles, loi applicable, modalités de résiliation, et règlement des litiges, même si elles ne sont pas explicitement demandées.\n";
+        $prompt .= "- Le contenu de chaque article doit être rédigé en paragraphes courts, séparés par des sauts de ligne, et utiliser des listes à puces pour les obligations ou droits multiples.\n";
+        $prompt .= "- Utilise un langage juridique clair, formel et professionnel, sans ambiguïté.\n";
+        $prompt .= "- La mise en page doit être aérée, avec des marges harmonieuses et des espaces suffisants entre les articles.\n";
+        $prompt .= "- À la fin du document, ajoute une formule de clôture élégante et centrée, par exemple :\n";
+        $prompt .= "- N’ajoute pas de section signature : la zone de signature sera gérée automatiquement dans la mise en page du document.\n";
+        $prompt .= "- N’utilise pas de crochets, de champs à compléter, ni de liens ou de tableaux Markdown pour les signatures.\n";
+        $prompt .= "- La présentation doit être claire, professionnelle, avec des titres bien visibles, une structure aérée, et aucune section vide.\n";
+        $prompt .= "\nUtilise exactement les informations fournies pour remplir tous les champs du document, quel que soit le type de document demandé.";
 
         \Log::info('Prompt envoyé au microservice /generate', ['prompt' => $prompt]);
 
         // Appel au microservice Python
         try {
-            $response = \Illuminate\Support\Facades\Http::withHeaders(['Content-Type' => 'application/json'])
+            $response = Http::withHeaders(['Content-Type' => 'application/json'])
                 ->post('http://127.0.0.1:5000/generate', [
                     'prompt' => $prompt,
                 ]);
             $json = $response->json();
             if ($response->successful() && isset($json['generated_text'])) {
                 $generatedText = $json['generated_text'];
+                // Conversion Markdown -> HTML
+                $converter = new CommonMarkConverter([
+                    'html_input' => 'escape',
+                    'allow_unsafe_links' => false,
+                ]);
+                $html = $converter->convert($generatedText);
             } else {
                 return response()->json([
                     'success' => false,
@@ -68,6 +81,7 @@ class DocumentController extends Controller
         $validated['content'] = json_encode([
             'fields' => $contentArray,
             'generated_text' => $generatedText,
+            'html' => $html->__toString(),
         ]);
 
         // Lier à l'utilisateur si besoin
@@ -89,64 +103,64 @@ class DocumentController extends Controller
     /**
      * Créer un document à partir d'un template dynamique (microservice /generate-template).
      */
-    public function storeFromTemplate(Request $request)
-    {
-        $data = $request->all(); // Doit contenir type_template et tous les champs nécessaires
+    // public function storeFromTemplate(Request $request)
+    // {
+    //     $data = $request->all(); // Doit contenir type_template et tous les champs nécessaires
 
-        // Validation minimale (ajuste selon tes besoins réels)
-        $validated = \Validator::make($data, [
-            'type_template' => 'required|string',
-            'title' => 'required|string|max:255',
-            // Ajoute ici d'autres règles si tu veux valider les champs dynamiques
-        ])->validate();
+    //     // Validation minimale (ajuste selon tes besoins réels)
+    //     $validated = \Validator::make($data, [
+    //         'type_template' => 'required|string',
+    //         'title' => 'required|string|max:255',
+    //         // Ajoute ici d'autres règles si tu veux valider les champs dynamiques
+    //     ])->validate();
 
-        \Log::info('Données reçues du frontend (React)', ['data' => $data]);
+    //     \Log::info('Données reçues du frontend (React)', ['data' => $data]);
 
-        // Appel au microservice Python
-        try {
-            $response = \Illuminate\Support\Facades\Http::withHeaders(['Content-Type' => 'application/json'])
-                ->post('http://localhost:5000/generate-template', $data);
-            $json = $response->json();
-            \Log::info('Réponse microservice /generate-template', ['response' => $json]);
-            if ($response->successful() && isset($json['generated_text'])) {
-                $generatedText = $json['generated_text'];
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Erreur lors de la génération du texte.',
-                    'details' => $json,
-                ], 500);
-            }
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Le microservice IA est indisponible.',
-                'error' => $e->getMessage(),
-            ], 503);
-        }
+    //     // Appel au microservice Python
+    //     try {
+    //         $response = \Illuminate\Support\Facades\Http::withHeaders(['Content-Type' => 'application/json'])
+    //             ->post('http://localhost:5000/generate-template', $data);
+    //         $json = $response->json();
+    //         \Log::info('Réponse microservice /generate-template', ['response' => $json]);
+    //         if ($response->successful() && isset($json['generated_text'])) {
+    //             $generatedText = $json['generated_text'];
+    //         } else {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Erreur lors de la génération du texte.',
+    //                 'details' => $json,
+    //             ], 500);
+    //         }
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Le microservice IA est indisponible.',
+    //             'error' => $e->getMessage(),
+    //         ], 503);
+    //     }
 
-        // Stocker le texte généré dans le champ content (JSON)
-        $contentArray = $data;
-        unset($contentArray['title']); // On ne stocke pas le titre dans le content
-        $validated['content'] = json_encode([
-            'fields' => $contentArray,
-            'generated_text' => $generatedText,
-        ]);
+    //     // Stocker le texte généré dans le champ content (JSON)
+    //     $contentArray = $data;
+    //     unset($contentArray['title']); // On ne stocke pas le titre dans le content
+    //     $validated['content'] = json_encode([
+    //         'fields' => $contentArray,
+    //         'generated_text' => $generatedText,
+    //     ]);
 
-        // Lier à l'utilisateur si besoin
-        if ($request->user()) {
-            $validated['user_id'] = $request->user()->id;
-        } else {
-            $validated['user_id'] = null;
-        }
+    //     // Lier à l'utilisateur si besoin
+    //     if ($request->user()) {
+    //         $validated['user_id'] = $request->user()->id;
+    //     } else {
+    //         $validated['user_id'] = null;
+    //     }
 
-        $document = \App\Models\Document::create($validated);
+    //     $document = \App\Models\Document::create($validated);
 
-        return response()->json([
-            'message' => 'Document créé avec succès (template) !',
-            'document' => $document,
-        ], 201);
-    }
+    //     return response()->json([
+    //         'message' => 'Document créé avec succès (template) !',
+    //         'document' => $document,
+    //     ], 201);
+    // }
 
     /**
      * Lister tous les documents avec pagination et recherche.
