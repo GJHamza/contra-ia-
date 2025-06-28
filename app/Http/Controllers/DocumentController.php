@@ -81,7 +81,7 @@ class DocumentController extends Controller
         $validated['content'] = json_encode([
             'fields' => $contentArray,
             'generated_text' => $generatedText,
-            'html' => $html,
+            'html' => $html->__toString(),
         ]);
 
         // Lier à l'utilisateur si besoin
